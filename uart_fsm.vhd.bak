@@ -1,0 +1,62 @@
+-- uart_fsm.vhd: UART controller - finite state machine
+-- Author(s): xsnope04
+--
+library ieee;
+use ieee.std_logic_1164.all;
+
+-------------------------------------------------
+entity UART_FSM is
+port(
+   CLK : in std_logic;
+   RST : in std_logic;
+   DIN : in std_logic;
+   COUNTER : in std_logic_vector(4 downto 0);
+   COUNTER2 : in std_logic_vector(3 downto 0);
+   DATA : out std_logic;
+   CN_EN : out std_logic;
+   VALID : out std_logic
+   );
+end entity UART_FSM;
+
+-------------------------------------------------
+architecture behavioral of UART_FSM is
+  
+type fsm_state is (WAIT_START, FIRST_BIT, READ, STOP_BIT, VALIDATION);
+signal test : fsm_state:= WAIT_START;
+
+begin
+  
+  DATA <= '1' when test = READ else '0';
+  VALID <= '1' when test = VALIDATION else '0';
+  CN_EN <= '1' when test = FIRST_BIT or test = READ else '0';
+  
+  process (CLK) begin
+    if rising_edge(CLK) then
+      
+      if RST = '1' then
+        test <= WAIT_START;
+      else
+        case test is
+          
+        when WAIT_START => if DIN = '0' then
+            test <= FIRST_BIT;
+          end if;
+          
+        when FIRST_BIT => if COUNTER = "10110" then
+            test <= READ;
+          end if;
+          
+        when READ => if COUNTER2 = "1000" then
+            test <= STOP_BIT;
+          end if;
+          
+        when STOP_BIT => if DIN = '1' then
+            test <= VALIDATION;
+          end if;
+          
+        when VALIDATION => test <= WAIT_START;
+        end case;
+      end if;
+    end if;
+  end process;
+end behavioral;
